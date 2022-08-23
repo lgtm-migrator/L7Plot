@@ -77,7 +77,7 @@ export type LocationItem<DataType = any> = {
   x: number; // 经度映射到二维坐标系中[0, 1]区间的值，用于聚类计算
   y: number; // 维度映射到二维坐标系中[0, 1]区间的值，用于聚类计算
   weight: number; // 权重，等于改点相关客流线的入度和出度的总和
-  parentIds?: string[]; // 被聚合后，聚合结点（或者说父节点）的id
+  parentId?: string | null; // 被聚合后，聚合结点（或者说父节点）的id
   isCluster?: boolean; // 是否为聚合节点
   childIds: string[]; // 作为聚合点被创建时，被聚合的子节点id数组
   originData: DataType[]; // 原始数据Item

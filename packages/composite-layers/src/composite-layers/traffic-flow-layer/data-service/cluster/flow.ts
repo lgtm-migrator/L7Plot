@@ -49,18 +49,16 @@ function getFlows(oldFlows: FlowItem[], oldLocationMap: LocationMap, newLocation
       if (!fromLocation) {
         const preFromLocation = oldLocationMap.get(fromId);
         // 根据上一层级的locations的clusterId指向当前层级的聚合后的结点
-        const clusterFromLocationId =
-          preFromLocation?.parentIds?.find((parentId) => newLocationMap.get(parentId)) ?? undefined;
-        if (clusterFromLocationId) {
-          fromLocation = newLocationMap.get(clusterFromLocationId);
+        const clusterFromLocation = preFromLocation?.parentId && newLocationMap.get(preFromLocation.parentId);
+        if (clusterFromLocation) {
+          fromLocation = clusterFromLocation;
         }
       }
       if (!toLocation) {
         const preToLocation = oldLocationMap.get(toId);
-        const clusterToLocationId =
-          preToLocation?.parentIds?.find((parentId) => newLocationMap.get(parentId)) ?? undefined;
-        if (clusterToLocationId) {
-          toLocation = newLocationMap.get(clusterToLocationId);
+        const clusterToLocation = preToLocation?.parentId && newLocationMap.get(preToLocation.parentId);
+        if (clusterToLocation) {
+          toLocation = clusterToLocation;
         }
       }
       if (fromLocation && toLocation) {
@@ -133,12 +131,11 @@ export async function getFlowLevels(
     },
   ];
   const getFlowsSync = worklyProxy(getFlows);
-  const isHCA = clusterOptions.clusterType === 'HCA';
   for (let index = 1; index < locationLevels.length; index++) {
     const { zoom: newZoom, locationMap: newLocationMap } = locationLevels[index];
     const { flows: newFlows, flowMap: newFlowMap } = await getFlowsSync(
-      isHCA ? previousFlows : originFlows,
-      isHCA ? previousLocationMap : originLocationMap,
+      previousFlows,
+      previousLocationMap,
       newLocationMap
     );
 

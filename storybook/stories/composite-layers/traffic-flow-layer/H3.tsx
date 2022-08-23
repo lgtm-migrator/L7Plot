@@ -40,7 +40,7 @@ class OdData extends Component {
         },
         source: {
           data,
-          // data: data.slice(0, 5),
+          // data: data.slice(0, 100),
         },
       });
       this.scene && trafficFlowLayer.addTo(this.scene);
