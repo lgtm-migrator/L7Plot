@@ -25,5 +25,5 @@ export const DEFAULT_FIELD_GETTER_OPTIONS: FieldGetter = {
 };
 
 export enum DataServiceEvent {
-  Init = 'Init',
+  Change = 'Change',
 }

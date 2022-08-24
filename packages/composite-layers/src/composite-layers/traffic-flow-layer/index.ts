@@ -1,12 +1,12 @@
 import { CompositeLayer } from '../../core/composite-layer';
 import { BBox, ClusterStyle, DataServiceOptions, TrafficFlowLayerOptions } from './types';
 import { DEFAULT_OPTIONS, DEFAULT_OVERFLOW_LIMIT, FLOW_LAYER_ID, LOCATION_LAYER_ID } from './constants';
-import { ICoreLayer } from '../../types';
+import { ICoreLayer, ISource, SourceOptions } from '../../types';
 import { PointLayer } from '../../core-layers/point-layer';
 import { LineLayer } from '../../core-layers/line-layer';
 import { DataService } from './data-service';
 import { Scene } from '@antv/l7-scene';
-import { debounce } from 'lodash-es';
+import { cloneDeep, debounce, intersection, omit } from 'lodash-es';
 import { LineLayerOptions } from '../../core-layers/line-layer/types';
 import { PointLayerOptions } from '../../core-layers/point-layer/types';
 import { DataServiceEvent } from './data-service/constants';
@@ -44,6 +44,7 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
     super(options);
 
     this.dataService = new DataService(this.getDataServiceOptions());
+    this.dataService.on(DataServiceEvent.Change, this.onMapChange);
   }
 
   protected get layer() {
@@ -84,6 +85,12 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
     this.onMapChange();
     scene.on('zoomchange', this.onMapChange);
     scene.on('mapmove', this.onMapChange);
+  }
+
+  remove() {
+    this.scene?.off('zoomchange', this.onMapChange);
+    this.scene?.off('mapmove', this.onMapChange);
+    super.remove();
   }
 
   /**
@@ -144,7 +151,6 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
       size: lineConfig?.size,
       color: lineConfig?.color,
     };
-
     return {
       cluster,
       locationLayerStyle: locationStyle,
@@ -166,10 +172,9 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
       }
       this.matchZoom = this.dataService.getMatchZoom(this.scene.getZoom());
       if (this.matchZoom < 0) {
-        this.dataService.once(DataServiceEvent.Init, this.onMapChange);
         return;
       }
-      const { displayFlows, displayLocations, locationStyle, flowStyle } = this.dataService.getZoomData(
+      const { displayFlows, displayLocations, locationStyle, flowStyle } = this.dataService.getMapData(
         this.scene.getBounds().flat() as BBox,
         this.matchZoom
       );
@@ -203,6 +208,22 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
     50,
     {}
   );
+
+  public async update(options: Partial<TrafficFlowLayerOptions<DataType>>) {
+    super.update(options);
+    const keys = Object.keys(options);
+    if (intersection(['pointConfig', 'lineConfig', 'fieldGetter', 'cluster', 'source', 'overflowLimit'], keys).length) {
+      await this.dataService.update(this.getDataServiceOptions());
+    }
+  }
+
+  public async changeData(source: SourceOptions | ISource) {
+    this.update({
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      source,
+    });
+  }
 
   /**
    * 根据传入配置更新对应layer

@@ -51,7 +51,7 @@ describe('traffic flow layer', () => {
     });
 
     return new Promise<void>((resolve) => {
-      dataService.on(DataServiceEvent.Init, () => {
+      dataService.on(DataServiceEvent.Change, () => {
         expect(dataService.getLocationFlowLevels().length).toBeGreaterThan(0);
         resolve();
       });

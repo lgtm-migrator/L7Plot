@@ -1,25 +1,12 @@
-import {
-  BBox,
-  DataServiceOptions,
-  FlowItem,
-  LocationFlow,
-  LocationFlowLevel,
-  LocationItem,
-  MapStatus,
-  ZoomData,
-} from './types';
+import { BBox, DataServiceOptions, FlowItem, LocationFlowLevel, LocationItem, MapStatus, ZoomData } from './types';
 import { initOriginData } from './init';
 import { getLocationLevels, getFlowLevels, getStyleLevels } from './cluster';
 import { lat2Y, lng2X } from './utils';
 import EventEmitter from '@antv/event-emitter';
 import { DataServiceEvent } from './constants';
+import { isEqual } from '@antv/util';
 
 export class DataService extends EventEmitter {
-  private originData: LocationFlow = {
-    locations: [],
-    flows: [],
-  };
-
   private mapStatus?: MapStatus;
 
   private options: DataServiceOptions;
@@ -28,42 +15,56 @@ export class DataService extends EventEmitter {
 
   constructor(options: DataServiceOptions) {
     super();
-    const { locations, flows } = initOriginData(options.data, options.fieldGetter);
-    this.originData = {
-      locations,
-      flows,
-    };
     this.options = options;
-  }
-
-  getLocationFlowLevels() {
-    return this.locationFlowLevels;
   }
 
   getOptions() {
     return this.options;
   }
 
-  getMpStatus() {
-    return this.mapStatus;
-  }
-
-  getOriginData() {
-    return this.originData;
+  getLocationFlowLevels() {
+    return this.locationFlowLevels;
   }
 
   async setMapStatus(newMapStatus: MapStatus) {
     this.mapStatus = newMapStatus;
     if (newMapStatus) {
-      await this.updateLevels();
+      await this.updateLevel();
     }
   }
 
-  async updateLevels() {
+  async update(options: Partial<DataServiceOptions>) {
+    const calcKeys: (keyof DataServiceOptions)[] = ['cluster', 'fieldGetter'];
+    const styleKeys: (keyof DataServiceOptions)[] = ['locationLayerStyle', 'flowLayerStyle'];
+    const oldOptions = { ...this.options };
+    this.options = {
+      ...this.options,
+      ...options,
+    };
+    if ('source' in options) {
+      await this.updateLevel();
+      return;
+    }
+    for (const key of calcKeys) {
+      if (key in options && isEqual(oldOptions[key], this.options[key])) {
+        await this.updateLevel();
+        return;
+      }
+    }
+    for (const key of styleKeys) {
+      if (key in options && isEqual(oldOptions[key], this.options[key])) {
+        await this.updateStyles();
+        return;
+      }
+    }
+  }
+
+  async updateLevel() {
     if (!this.mapStatus) {
       return;
     }
-    const { locations, flows } = this.originData;
+    const { locations, flows } = initOriginData(this.options.data, this.options.fieldGetter);
+
     const { cluster, locationLayerStyle, flowLayerStyle } = this.options;
 
     const locationLevels = getLocationLevels(locations, cluster, this.mapStatus);
@@ -85,7 +86,18 @@ export class DataService extends EventEmitter {
       });
     }
     this.locationFlowLevels = locationFlowLevels;
-    this.emit(DataServiceEvent.Init);
+    this.emit(DataServiceEvent.Change);
+  }
+
+  updateStyles() {
+    const { locationLayerStyle, flowLayerStyle } = this.options;
+    for (const index in this.locationFlowLevels) {
+      Object.assign(this.locationFlowLevels[index], {
+        locationStyle: getStyleLevels(this.locationFlowLevels, locationLayerStyle),
+        flowStyle: getStyleLevels(this.locationFlowLevels, flowLayerStyle),
+      });
+    }
+    this.emit(DataServiceEvent.Change);
   }
 
   /**
@@ -110,7 +122,7 @@ export class DataService extends EventEmitter {
     return locationFlowLevels[locationFlowLevels.length - 1].zoom;
   }
 
-  getZoomData([lng1, lat1, lng2, lat2]: BBox, zoom: number): ZoomData {
+  getMapData([lng1, lat1, lng2, lat2]: BBox, zoom: number): ZoomData {
     let displayLocations: LocationItem[] = [];
     let displayFlows: FlowItem[] = [];
     const targetLevel = this.locationFlowLevels.find((item) => item.zoom === zoom)!;
@@ -133,7 +145,13 @@ export class DataService extends EventEmitter {
     };
   }
 
-  getTargetOriginData(id: string, zoom: number, type: 'location' | 'flow'): LocationItem | FlowItem | null {
+  /**
+   * 根据 id 获取目标元素的数据
+   * @param id
+   * @param zoom
+   * @param type
+   */
+  public getTargetOriginData(id: string, zoom: number, type: 'location' | 'flow'): LocationItem | FlowItem | null {
     const targetLevelIndex = this.locationFlowLevels.findIndex((item) => item.zoom === zoom);
     if (targetLevelIndex < 0) {
       return null;
