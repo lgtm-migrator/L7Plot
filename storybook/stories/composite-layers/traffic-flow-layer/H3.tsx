@@ -1,12 +1,15 @@
 import React, { Component } from 'react';
 import { Scene, GaodeMapV2 } from '@antv/l7';
-import { FlowItem, LocationItem, TrafficFlowLayer } from '@antv/l7-composite-layers';
+import { TrafficFlowLayer } from '@antv/l7-composite-layers';
 
-class OdData extends Component {
+class OdData extends Component<any, { layer: null | TrafficFlowLayer }> {
   public scene: Scene | undefined;
 
   constructor(props) {
     super(props);
+    this.state = {
+      layer: null,
+    };
   }
 
   async initMap() {
@@ -44,6 +47,9 @@ class OdData extends Component {
         },
       });
       this.scene && trafficFlowLayer.addTo(this.scene);
+      this.setState({
+        layer: trafficFlowLayer,
+      });
 
       // trafficFlowLayer.locationLayer.on('click', (e: any) => {
       //   const { id } = e.feature as LocationItem;
@@ -67,17 +73,35 @@ class OdData extends Component {
 
   render() {
     return (
-      <div
-        id="container"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden',
-        }}
-      ></div>
+      <div>
+        <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 10000 }}>
+          <button
+            onClick={() => {
+              this.state.layer?.show();
+            }}
+          >
+            显示
+          </button>
+          <button
+            onClick={() => {
+              this.state.layer?.hide();
+            }}
+          >
+            隐藏
+          </button>
+        </div>
+        <div
+          id="container"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            overflow: 'hidden',
+          }}
+        ></div>
+      </div>
     );
   }
 }

@@ -6,7 +6,7 @@ import { PointLayer } from '../../core-layers/point-layer';
 import { LineLayer } from '../../core-layers/line-layer';
 import { DataService } from './data-service';
 import { Scene } from '@antv/l7-scene';
-import { cloneDeep, debounce, intersection, omit } from 'lodash-es';
+import { debounce, intersection } from 'lodash-es';
 import { LineLayerOptions } from '../../core-layers/line-layer/types';
 import { PointLayerOptions } from '../../core-layers/point-layer/types';
 import { DataServiceEvent } from './data-service/constants';
@@ -167,7 +167,7 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
    */
   protected onMapChange = debounce(
     () => {
-      if (!this.scene || this.isVisible()) {
+      if (!this.scene || !this.isVisible()) {
         return;
       }
       this.matchZoom = this.dataService.getMatchZoom(this.scene.getZoom());
