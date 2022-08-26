@@ -167,7 +167,7 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
    */
   protected onMapChange = debounce(
     () => {
-      if (!this.scene) {
+      if (!this.scene || this.isVisible()) {
         return;
       }
       this.matchZoom = this.dataService.getMatchZoom(this.scene.getZoom());
@@ -208,6 +208,11 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
     50,
     {}
   );
+
+  public show() {
+    super.show();
+    this.onMapChange();
+  }
 
   public async update(options: Partial<TrafficFlowLayerOptions<DataType>>) {
     super.update(options);
