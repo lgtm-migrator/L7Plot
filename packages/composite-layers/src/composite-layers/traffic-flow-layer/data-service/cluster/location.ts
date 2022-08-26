@@ -11,6 +11,7 @@ import KDBush from 'kdbush';
 import { createUuid } from '../utils';
 import { createLocationItem } from '../init';
 import { geoToH3, h3ToGeo } from 'h3-js';
+import { max, min } from 'lodash-es';
 
 /**
  * 生成kdbush搜索树
@@ -55,6 +56,8 @@ export function getLocationLevels(
       locations: oldLocations,
       locationMap: new Map(oldLocations.map((location) => [location.id, location])),
       locationTree: oldTree,
+      minLocationWeight: min(oldLocations.map((item) => item.weight)) ?? 0,
+      maxLocationWeight: max(oldLocations.map((item) => item.weight)) ?? 0,
     },
   ];
 
@@ -70,7 +73,7 @@ export function getLocationLevels(
     if (!result) {
       continue;
     }
-    const { locations: newLocations, locationMap: newLocationMap } = result;
+    const { locations: newLocations, locationMap: newLocationMap, minLocationWeight, maxLocationWeight } = result;
     if (newLocations.length < oldLocations.length) {
       // 仅有新的locations长度比上一层级的locations长度更小时才保存数据
       const newTree = getSearchTree(newLocations);
@@ -79,6 +82,8 @@ export function getLocationLevels(
         locations: newLocations,
         locationMap: newLocationMap,
         locationTree: newTree,
+        minLocationWeight,
+        maxLocationWeight,
       });
       oldLocations = newLocations;
       oldTree = newTree;
@@ -106,12 +111,27 @@ function getLocationsByHCA(
 ): {
   locations: LocationItem[];
   locationMap: LocationMap;
+  minLocationWeight: number;
+  maxLocationWeight: number;
 } | null {
   const { clusterLevel = 10 } = clusterOptions;
   let newLocations: LocationItem[] = [];
   const newLocationMap: LocationMap = new Map();
+  let maxLocationWeight = oldLocations[0]?.weight ?? 0;
+  let minLocationWeight = oldLocations[0]?.weight ?? 0;
   const radius = clusterLevel / (128 * Math.pow(2, zoom));
   const doneIdSet = new Set();
+
+  const addNewLocation = (location: LocationItem) => {
+    newLocations.push(location);
+    newLocationMap.set(location.id, location);
+    if (location.weight > maxLocationWeight) {
+      maxLocationWeight = location.weight;
+    }
+    if (location.weight < minLocationWeight) {
+      minLocationWeight = location.weight;
+    }
+  };
 
   for (const location of oldLocations) {
     if (doneIdSet.has(location.id)) {
@@ -154,13 +174,11 @@ function getLocationsByHCA(
           originData: [],
           // originData,
         });
-        newLocations.push(newLocation);
-        newLocationMap.set(newLocation.id, newLocation);
+        addNewLocation(newLocation);
         continue;
       }
     }
-    newLocations.push(location);
-    newLocationMap.set(location.id, location);
+    addNewLocation(location);
   }
 
   if (newLocations.length < oldLocations.length) {
@@ -170,6 +188,8 @@ function getLocationsByHCA(
   return {
     locations: newLocations,
     locationMap: newLocationMap,
+    minLocationWeight: minLocationWeight,
+    maxLocationWeight: maxLocationWeight,
   };
 }
 
@@ -186,6 +206,8 @@ function getLocationsByH3(
 ): {
   locations: LocationItem[];
   locationMap: LocationMap;
+  minLocationWeight: number;
+  maxLocationWeight: number;
 } | null {
   const { h3Range } = clusterOptions;
   const h3Level = zoom - 5;
@@ -197,6 +219,8 @@ function getLocationsByH3(
   }
   const newLocations: LocationItem[] = [];
   const newLocationMap: LocationMap = new Map();
+  let maxLocationWeight = oldLocations[0]?.weight ?? 0;
+  let minLocationWeight = oldLocations[0]?.weight ?? 0;
   const h3IndexMap = new Map<string, LocationItem[]>();
 
   for (const location of oldLocations) {
@@ -228,10 +252,18 @@ function getLocationsByH3(
     });
     newLocations.push(newLocation);
     newLocationMap.set(newLocation.id, newLocation);
+    if (newLocation.weight > maxLocationWeight) {
+      maxLocationWeight = newLocation.weight;
+    }
+    if (newLocation.weight < minLocationWeight) {
+      minLocationWeight = newLocation.weight;
+    }
   });
 
   return {
     locations: newLocations.sort((a, b) => a.weight - b.weight),
     locationMap: newLocationMap,
+    minLocationWeight,
+    maxLocationWeight,
   };
 }

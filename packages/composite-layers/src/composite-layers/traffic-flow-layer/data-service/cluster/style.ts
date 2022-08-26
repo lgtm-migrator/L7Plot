@@ -32,10 +32,9 @@ export function getStyleLevels(itemLevels: (LocationLevel | FlowLevel)[], cluste
     // 获取所有数据项
     const list: (LocationItem | FlowItem)[] =
       (itemLevel as LocationLevel).locations ?? (itemLevel as FlowLevel).flows ?? [];
+    const minWeight = (itemLevel as LocationLevel).minLocationWeight ?? (itemLevel as FlowLevel).minFlowWeight;
+    const maxWeight = (itemLevel as LocationLevel).maxLocationWeight ?? (itemLevel as FlowLevel).maxFlowWeight;
     if (list.length) {
-      const weightList = Array.from(new Set(list.map((item) => item.weight)));
-      const minWeight = Math.min(...weightList);
-      const maxWeight = Math.max(...weightList);
       const newStyleLevel: StyleLevel = {
         zoom: itemLevel.zoom,
       };

@@ -1,5 +1,6 @@
 import { ClusterOptions, FlowItem, FlowLevel, FlowMap, LocationItem, LocationLevel, LocationMap } from '../types';
 import { proxy as worklyProxy } from 'workly/index';
+import { max, min } from 'lodash-es';
 
 /**
  * 获取当前缩放比zoom下对应的flows
@@ -7,7 +8,23 @@ import { proxy as worklyProxy } from 'workly/index';
  * @param oldLocationMap：上一层级locations对应的Map
  * @param newLocationMap：当前层级locations对应的Map
  */
-function getFlows(oldFlows: FlowItem[], oldLocationMap: LocationMap, newLocationMap: LocationMap) {
+function getFlows(
+  oldFlows: FlowItem[],
+  oldLocationMap: LocationMap,
+  newLocationMap: LocationMap
+): {
+  flows: FlowItem[];
+  flowMap: FlowMap;
+  minFlowWeight: number;
+  maxFlowWeight: number;
+} {
+  const newFLows: FlowItem[] = [];
+  const newFlowMap: FlowMap = new Map();
+  // 用于存储相同起终点的flows，如果每条flows长度 > 1，则需要聚合
+  const positionFlowMap = new Map<string, FlowItem[]>();
+  let minFlowWeight = oldFlows[0]?.weight;
+  let maxFlowWeight = oldFlows[0]?.weight;
+
   function createFlowItem(
     config: Omit<FlowItem, 'fromId' | 'fromLng' | 'fromLat' | 'toId' | 'toLng' | 'toLat'>,
     fromLocation: Pick<LocationItem, 'id' | 'lng' | 'lat'>,
@@ -31,9 +48,16 @@ function getFlows(oldFlows: FlowItem[], oldLocationMap: LocationMap, newLocation
     return `${S4() + S4()}-${S4()}-${S4()}-${S4()}-${S4()}${S4()}${S4()}`;
   }
 
-  const newFLows: FlowItem[] = [];
-  // 用于存储相同起终点的flows，如果每条flows长度 > 1，则需要聚合
-  const positionFlowMap = new Map<string, FlowItem[]>();
+  function addNewFlow(newFlow: FlowItem) {
+    newFLows.push(newFlow);
+    newFlowMap.set(newFlow.id, newFlow);
+    if (newFlow.weight > maxFlowWeight) {
+      maxFlowWeight = newFlow.weight;
+    }
+    if (newFlow.weight < minFlowWeight) {
+      minFlowWeight = newFlow.weight;
+    }
+  }
   // console.log(oldFlows);
   for (let i = 0; i < oldFlows.length; i++) {
     const flow = oldFlows[i];
@@ -71,7 +95,6 @@ function getFlows(oldFlows: FlowItem[], oldLocationMap: LocationMap, newLocation
       positionFlowMap.set(key, (positionFlowMap.get(key) ?? []).concat(newFlow));
     }
   }
-  const newFlowMap: FlowMap = new Map();
   positionFlowMap.forEach((flowList) => {
     // 当起终点相同的flows长度 > 1时，则需要进行线路聚合。
     if (flowList.length > 1) {
@@ -87,17 +110,17 @@ function getFlows(oldFlows: FlowItem[], oldLocationMap: LocationMap, newLocation
         { id: fromId, lng: fromLng, lat: fromLat },
         { id: toId, lng: toLng, lat: toLat }
       );
-      newFLows.push(clusterFlow);
-      newFlowMap.set(clusterFlow.id, clusterFlow);
+      addNewFlow(clusterFlow);
     } else if (flowList[0]) {
       const firstChildFlow = flowList[0]!;
-      newFLows.push(firstChildFlow);
-      newFlowMap.set(firstChildFlow.id, firstChildFlow);
+      addNewFlow(firstChildFlow);
     }
   });
   return {
     flows: newFLows.sort((a, b) => a.weight - b.weight),
     flowMap: newFlowMap,
+    minFlowWeight,
+    maxFlowWeight,
   };
 }
 
@@ -128,21 +151,26 @@ export async function getFlowLevels(
       zoom: previousZoom,
       flows: previousFlows,
       flowMap: new Map(previousFlows.map((flow) => [flow.id, flow])),
+      minFlowWeight: min(flows.map((flow) => flow.weight)) ?? 0,
+      maxFlowWeight: max(flows.map((flow) => flow.weight)) ?? 0,
     },
   ];
   const getFlowsSync = worklyProxy(getFlows);
   for (let index = 1; index < locationLevels.length; index++) {
     const { zoom: newZoom, locationMap: newLocationMap } = locationLevels[index];
-    const { flows: newFlows, flowMap: newFlowMap } = await getFlowsSync(
-      previousFlows,
-      previousLocationMap,
-      newLocationMap
-    );
+    const {
+      flows: newFlows,
+      flowMap: newFlowMap,
+      minFlowWeight,
+      maxFlowWeight,
+    } = await getFlowsSync(previousFlows, previousLocationMap, newLocationMap);
 
     flowLevels.push({
       zoom: newZoom,
       flows: newFlows,
       flowMap: newFlowMap,
+      minFlowWeight,
+      maxFlowWeight,
     });
 
     previousFlows = newFlows;

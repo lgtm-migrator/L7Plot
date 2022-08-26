@@ -113,12 +113,16 @@ export type LocationLevel = {
   locationMap: LocationMap;
   locationTree: KdBush<LocationItem>;
   zoom: number;
+  minLocationWeight: number;
+  maxLocationWeight: number;
 };
 
 export type FlowLevel = {
   zoom: number;
   flows: FlowItem[];
   flowMap: FlowMap;
+  minFlowWeight: number;
+  maxFlowWeight: number;
 };
 
 export type StyleLevel = {
