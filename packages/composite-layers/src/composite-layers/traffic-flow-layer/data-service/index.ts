@@ -134,9 +134,11 @@ export class DataService extends EventEmitter {
     } else if (locationIndexes.length > 0) {
       displayLocations = locationIndexes.map((index) => locationTree.points[index]);
       const nodeIdSet = new Set(displayLocations.map((location) => location.id));
-      displayFlows = flows.filter(({ fromId, toId }) => {
-        return nodeIdSet.has(fromId) || nodeIdSet.has(toId);
-      });
+      displayFlows = flows
+        .filter(({ fromId, toId }) => {
+          return nodeIdSet.has(fromId) || nodeIdSet.has(toId);
+        })
+        .sort((a, b) => a.weight - b.weight);
     }
     return {
       ...targetLevel,
