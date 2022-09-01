@@ -1,5 +1,5 @@
 import { ClusterOptions, FlowItem, FlowLevel, FlowMap, LocationItem, LocationLevel, LocationMap } from '../types';
-import { proxy as worklyProxy } from 'workly/index';
+// import { proxy as worklyProxy } from 'workly/index';
 import { max, min } from 'lodash-es';
 
 /**
@@ -155,7 +155,7 @@ export async function getFlowLevels(
       maxFlowWeight: max(flows.map((flow) => flow.weight)) ?? 0,
     },
   ];
-  const getFlowsSync = worklyProxy(getFlows);
+  const getFlowsSync = getFlows;
   for (let index = 1; index < locationLevels.length; index++) {
     const { zoom: newZoom, locationMap: newLocationMap } = locationLevels[index];
     const {
