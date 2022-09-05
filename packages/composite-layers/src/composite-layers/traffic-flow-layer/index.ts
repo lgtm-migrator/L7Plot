@@ -1,4 +1,4 @@
-import { CompositeLayer } from '../../core/composite-layer';
+import { CompositeLayer, CompositeLayerOptions } from '../../core/composite-layer';
 import { BBox, ClusterStyle, DataServiceOptions, TrafficFlowLayerOptions } from './types';
 import { DEFAULT_OPTIONS, DEFAULT_OVERFLOW_LIMIT, FLOW_LAYER_ID, LOCATION_LAYER_ID } from './constants';
 import { ICoreLayer, ISource, SourceOptions } from '../../types';
@@ -6,7 +6,7 @@ import { PointLayer } from '../../core-layers/point-layer';
 import { LineLayer } from '../../core-layers/line-layer';
 import { DataService } from './data-service';
 import { Scene } from '@antv/l7-scene';
-import { debounce, intersection } from 'lodash-es';
+import { debounce, intersection, pick } from 'lodash-es';
 import { LineLayerOptions } from '../../core-layers/line-layer/types';
 import { PointLayerOptions } from '../../core-layers/point-layer/types';
 import { DataServiceEvent } from './data-service/constants';
@@ -245,14 +245,27 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
    */
   protected updateSubLayers(options: Partial<TrafficFlowLayerOptions<DataType>>) {
     const { pointConfig, lineConfig } = options;
+    const commonOptions: Partial<CompositeLayerOptions> = pick(
+      options,
+      'zIndex',
+      'visible',
+      'minZoom',
+      'maxZoom',
+      'pickingBuffer',
+      'autoFit',
+      'blend'
+    );
     if (pointConfig) {
-      this.locationLayer.update(pointConfig);
+      this.locationLayer.update({
+        ...commonOptions,
+        ...pointConfig,
+      });
       if (pointConfig.source) {
         this.locationLayer.changeData(pointConfig.source);
       }
     }
     if (lineConfig) {
-      this.flowLayer.update(lineConfig);
+      this.flowLayer.update({ ...commonOptions, ...lineConfig });
       if (lineConfig.source) {
         this.flowLayer.changeData(lineConfig.source);
       }
