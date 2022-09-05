@@ -42,8 +42,38 @@ class OdData extends Component<any, { layer: null | TrafficFlowLayer }> {
           weight: 'weight',
         },
         source: {
-          data,
-          // data: data.slice(0, 100),
+          // data,
+          data: data.slice(0, 100000),
+        },
+        lineConfig: {
+          size: {
+            value: [3, 10],
+            field: 'weight',
+            scale: {
+              type: 'quantile',
+              field: 'weight',
+            },
+          },
+          state: {
+            active: {
+              color: '#ffff00',
+            },
+          },
+        },
+        pointConfig: {
+          size: {
+            value: [5, 20],
+            field: 'weight',
+            scale: {
+              type: 'quantile',
+              field: 'weight',
+            },
+          },
+          state: {
+            active: {
+              color: '#ffff00',
+            },
+          },
         },
       });
       this.scene && trafficFlowLayer.addTo(this.scene);
@@ -88,6 +118,24 @@ class OdData extends Component<any, { layer: null | TrafficFlowLayer }> {
             }}
           >
             隐藏
+          </button>
+          <button
+            onClick={() => {
+              this.state.layer?.update({
+                lockZoom: 12,
+              });
+            }}
+          >
+            设置固定 zoom
+          </button>
+          <button
+            onClick={() => {
+              this.state.layer?.update({
+                lockZoom: null,
+              });
+            }}
+          >
+            取消固定 zoom
           </button>
         </div>
         <div

@@ -15,6 +15,11 @@ export interface TrafficFlowLayerOptions<DataType = any> extends CompositeLayerO
   };
 
   /**
+   * 按照固定的 zoom 获取数据
+   */
+  lockZoom?: number | null;
+
+  /**
    * 聚合点图层其他配置
    */
   pointConfig?: Partial<PointLayerOptions>;

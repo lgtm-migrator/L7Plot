@@ -170,7 +170,7 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
       if (!this.scene || !this.isVisible()) {
         return;
       }
-      const newMathZoom = this.dataService.getMatchZoom(this.scene.getZoom());
+      const newMathZoom = this.dataService.getMatchZoom(this.options.lockZoom ?? this.scene.getZoom());
       const matchZoomChange = newMathZoom !== this.matchZoom;
       this.matchZoom = newMathZoom;
       if (this.matchZoom < 0) {
@@ -224,6 +224,9 @@ export class TrafficFlowLayer<DataType = any> extends CompositeLayer<TrafficFlow
     const keys = Object.keys(options);
     if (intersection(['pointConfig', 'lineConfig', 'fieldGetter', 'cluster', 'source', 'overflowLimit'], keys).length) {
       await this.dataService.update(this.getDataServiceOptions());
+    }
+    if ('lockZoom' in options) {
+      this.onMapChange();
     }
   }
 
